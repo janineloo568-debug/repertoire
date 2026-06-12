@@ -1,16 +1,15 @@
 import { getToken } from "next-auth/jwt";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getAuthSecret } from "@/lib/auth/config";
+import { getAuthSecret, useSecureSessionCookies } from "@/lib/auth/config";
 
 export async function middleware(req: NextRequest) {
   const token = await getToken({
     req,
     secret: getAuthSecret(),
+    secureCookie: useSecureSessionCookies(req),
   });
 
-  // Match auth.ts session callback: only `valid === false` means signed out.
-  // Edge middleware may not see custom JWT fields, so don't require `valid === true`.
   const isLoggedIn = Boolean(token?.sub && token.valid !== false);
 
   const isAppRoute =
