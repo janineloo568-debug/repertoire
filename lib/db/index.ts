@@ -1,10 +1,17 @@
+import { createHash } from "crypto";
+import { existsSync, readFileSync } from "fs";
+import { join } from "path";
 import { drizzle } from "drizzle-orm/better-sqlite3";
+import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import Database from "better-sqlite3";
 import { loadEnv } from "@/lib/load-env";
 import { ensureDataDirectories, getSqliteFilePath, getUploadRoot } from "@/lib/paths/data-dir";
 import * as schema from "./schema";
 
 loadEnv();
+
+const MIGRATIONS_FOLDER = join(process.cwd(), "drizzle");
+const INITIAL_MIGRATION_TAG = "0000_naive_lizard";
 
 const filePath = getSqliteFilePath();
 ensureDataDirectories(filePath, getUploadRoot());
@@ -13,6 +20,15 @@ const sqlite = new Database(filePath);
 sqlite.pragma("journal_mode = WAL");
 sqlite.pragma("foreign_keys = ON");
 sqlite.pragma("busy_timeout = 5000");
+
+const db = drizzle(sqlite, { schema });
+
+function tableExists(table: string): boolean {
+  const row = sqlite
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1")
+    .get(table);
+  return !!row;
+}
 
 function ensureColumn(table: string, column: string, definition: string) {
   const cols = sqlite.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
@@ -26,47 +42,66 @@ function ensureColumn(table: string, column: string, definition: string) {
   }
 }
 
+/** DBs bootstrapped before Drizzle migrations only had practice tables — drop them so migrate can run. */
+function dropPartialBootstrapTables() {
+  if (!tableExists("users") && tableExists("practice_logs")) {
+    sqlite.exec("DROP TABLE IF EXISTS practice_logs");
+    sqlite.exec("DROP TABLE IF EXISTS piece_practice_goals");
+  }
+}
+
+/** Local DBs created via drizzle-kit push have tables but no migration journal. */
+function baselineDrizzleJournalIfNeeded() {
+  if (!tableExists("users") || tableExists("__drizzle_migrations")) return;
+
+  const migrationPath = join(MIGRATIONS_FOLDER, `${INITIAL_MIGRATION_TAG}.sql`);
+  if (!existsSync(migrationPath)) return;
+
+  const query = readFileSync(migrationPath, "utf8");
+  const hash = createHash("sha256").update(query).digest("hex");
+
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS __drizzle_migrations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      hash text NOT NULL,
+      created_at numeric
+    )
+  `);
+  sqlite.prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)").run(
+    hash,
+    Date.now()
+  );
+}
+
+function runLegacyColumnPatches() {
+  if (!tableExists("practice_logs")) return;
+
+  ensureColumn("practice_logs", "passage_notes", "TEXT DEFAULT '' NOT NULL");
+  ensureColumn("practice_logs", "audio_storage_key", "TEXT");
+  ensureColumn("practice_logs", "audio_mime_type", "TEXT");
+  ensureColumn("practice_logs", "audio_analysis", "TEXT");
+  ensureColumn("piece_practice_goals", "goals_text", "TEXT DEFAULT '' NOT NULL");
+}
+
 function runMigrations() {
   sqlite.exec("BEGIN IMMEDIATE");
   try {
-    sqlite.exec(`
-CREATE TABLE IF NOT EXISTS practice_logs (
-  id TEXT PRIMARY KEY NOT NULL,
-  piece_id TEXT NOT NULL REFERENCES pieces(id) ON DELETE CASCADE,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  body TEXT DEFAULT '' NOT NULL,
-  passage_notes TEXT DEFAULT '' NOT NULL,
-  audio_storage_key TEXT,
-  audio_mime_type TEXT,
-  audio_analysis TEXT,
-  coach_response TEXT,
-  created_at INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS practice_logs_piece_user_created_idx
-  ON practice_logs (piece_id, user_id, created_at);
-CREATE INDEX IF NOT EXISTS practice_logs_user_created_idx
-  ON practice_logs (user_id, created_at);
+    dropPartialBootstrapTables();
+    sqlite.exec("COMMIT");
+  } catch (err) {
+    sqlite.exec("ROLLBACK");
+    throw err;
+  }
 
-CREATE TABLE IF NOT EXISTS piece_practice_goals (
-  piece_id TEXT PRIMARY KEY NOT NULL REFERENCES pieces(id) ON DELETE CASCADE,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  target_tempo_bpm INTEGER,
-  dynamics_notes TEXT DEFAULT '' NOT NULL,
-  emotion_notes TEXT DEFAULT '' NOT NULL,
-  passage_notes TEXT DEFAULT '' NOT NULL,
-  goals_text TEXT DEFAULT '' NOT NULL,
-  updated_at INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS piece_practice_goals_user_idx ON piece_practice_goals (user_id);
-`);
+  if (!tableExists("users")) {
+    migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
+  } else {
+    baselineDrizzleJournalIfNeeded();
+  }
 
-    // Legacy installs created before columns were in CREATE TABLE above.
-    ensureColumn("practice_logs", "passage_notes", "TEXT DEFAULT '' NOT NULL");
-    ensureColumn("practice_logs", "audio_storage_key", "TEXT");
-    ensureColumn("practice_logs", "audio_mime_type", "TEXT");
-    ensureColumn("practice_logs", "audio_analysis", "TEXT");
-    ensureColumn("piece_practice_goals", "goals_text", "TEXT DEFAULT '' NOT NULL");
-
+  sqlite.exec("BEGIN IMMEDIATE");
+  try {
+    runLegacyColumnPatches();
     sqlite.exec("COMMIT");
   } catch (err) {
     sqlite.exec("ROLLBACK");
@@ -76,4 +111,4 @@ CREATE INDEX IF NOT EXISTS piece_practice_goals_user_idx ON piece_practice_goals
 
 runMigrations();
 
-export const db = drizzle(sqlite, { schema });
+export { db };
