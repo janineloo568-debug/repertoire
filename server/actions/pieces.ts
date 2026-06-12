@@ -31,6 +31,10 @@ const createPieceSchema = pieceFormSchema
 
 export type CreatePieceInput = z.infer<typeof createPieceSchema>;
 
+function actionError(message: string) {
+  return { error: { _form: [message] } as Record<string, string[]> };
+}
+
 async function revalidateProfilePaths(userId: string) {
   const row = await db
     .select({ username: users.username })
@@ -44,7 +48,9 @@ async function revalidateProfilePaths(userId: string) {
 
 export async function createPiece(input: CreatePieceInput) {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  if (!session?.user?.id) {
+    return actionError("Please sign in to add pieces.");
+  }
 
   const parsed = createPieceSchema.safeParse(input);
   if (!parsed.success) {
@@ -52,34 +58,44 @@ export async function createPiece(input: CreatePieceInput) {
   }
 
   const d = parsed.data;
-  const [row] = await db
-    .insert(pieces)
-    .values({
-      userId: session.user.id,
-      title: d.title,
-      composer: d.composer ?? null,
-      instrument: d.instrument,
-      difficulty: d.difficulty,
-      sourceType: d.sourceType,
-      storageKey: d.sourceType === "upload" ? d.storageKey! : null,
-      externalUrl: d.sourceType === "external_link" ? d.externalUrl! : null,
-      mimeType: d.mimeType ?? (d.sourceType === "upload" ? "application/pdf" : null),
-      fileNameOriginal: d.fileNameOriginal ?? null,
-      isPublic: d.isPublic ?? false,
-      repertoireStatus: d.repertoireStatus ?? "learning",
-    })
-    .returning({ id: pieces.id });
 
-  if (row?.id && (d.isPublic ?? false)) {
-    await recordFeedActivity({
-      userId: session.user.id,
-      type: "piece_added",
-      pieceId: row.id,
-    });
+  try {
+    const [row] = await db
+      .insert(pieces)
+      .values({
+        userId: session.user.id,
+        title: d.title,
+        composer: d.composer ?? null,
+        instrument: d.instrument,
+        difficulty: d.difficulty,
+        sourceType: d.sourceType,
+        storageKey: d.sourceType === "upload" ? d.storageKey! : null,
+        externalUrl: d.sourceType === "external_link" ? d.externalUrl! : null,
+        mimeType: d.mimeType ?? (d.sourceType === "upload" ? "application/pdf" : null),
+        fileNameOriginal: d.fileNameOriginal ?? null,
+        isPublic: d.isPublic ?? false,
+        repertoireStatus: d.repertoireStatus ?? "learning",
+      })
+      .returning({ id: pieces.id });
+
+    if (!row?.id) {
+      return actionError("Could not save piece. Please try again.");
+    }
+
+    if (d.isPublic ?? false) {
+      await recordFeedActivity({
+        userId: session.user.id,
+        type: "piece_added",
+        pieceId: row.id,
+      });
+    }
+
+    await revalidateProfilePaths(session.user.id);
+    return { id: row.id };
+  } catch (err) {
+    console.error("createPiece failed", err);
+    return actionError("Could not save piece. Sign out, sign in again, and retry.");
   }
-
-  await revalidateProfilePaths(session.user.id);
-  return { id: row?.id };
 }
 
 export async function updatePiece(input: {

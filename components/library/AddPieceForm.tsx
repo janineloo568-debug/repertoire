@@ -9,6 +9,10 @@ import { Label } from "@/components/ui/label";
 import { instrumentValues } from "@/lib/validations/piece";
 import { createPiece } from "@/server/actions/pieces";
 
+function formatActionError(error: Record<string, string[]>) {
+  return Object.values(error).flat().join(" ") || "Something went wrong";
+}
+
 export function AddPieceForm() {
   const router = useRouter();
   const [mode, setMode] = useState<"link" | "upload">("link");
@@ -27,27 +31,32 @@ export function AddPieceForm() {
     setPending(true);
 
     if (mode === "link") {
-      const res = await createPiece({
-        title,
-        composer: composer || null,
-        instrument: instrument as (typeof instrumentValues)[number],
-        difficulty,
-        sourceType: "external_link",
-        externalUrl: externalUrl || null,
-        storageKey: null,
-        mimeType: null,
-        fileNameOriginal: null,
-      });
-      setPending(false);
-      if (res && "error" in res && res.error) {
-        setError(Object.values(res.error).flat().join(" ") || "Validation error");
-        return;
+      try {
+        const res = await createPiece({
+          title,
+          composer: composer || null,
+          instrument: instrument as (typeof instrumentValues)[number],
+          difficulty,
+          sourceType: "external_link",
+          externalUrl: externalUrl || null,
+          storageKey: null,
+          mimeType: null,
+          fileNameOriginal: null,
+        });
+        setPending(false);
+        if (res && "error" in res && res.error) {
+          setError(formatActionError(res.error));
+          return;
+        }
+        if (res && "id" in res && res.id) {
+          router.push(`/library/${res.id}`);
+          return;
+        }
+        setError("Could not create piece");
+      } catch {
+        setPending(false);
+        setError("Could not create piece. Try signing out and back in.");
       }
-      if (res && "id" in res && res.id) {
-        router.push(`/library/${res.id}`);
-        return;
-      }
-      setError("Could not create piece");
       return;
     }
 
@@ -67,27 +76,32 @@ export function AddPieceForm() {
       return;
     }
 
-    const res = await createPiece({
-      title,
-      composer: composer || null,
-      instrument: instrument as (typeof instrumentValues)[number],
-      difficulty,
-      sourceType: "upload",
-      externalUrl: null,
-      storageKey: uploadData.storageKey,
-      mimeType: uploadData.mimeType ?? "application/pdf",
-      fileNameOriginal: uploadData.fileNameOriginal ?? file.name,
-    });
-    setPending(false);
-    if (res && "error" in res && res.error) {
-      setError(Object.values(res.error).flat().join(" ") || "Validation error");
-      return;
+    try {
+      const res = await createPiece({
+        title,
+        composer: composer || null,
+        instrument: instrument as (typeof instrumentValues)[number],
+        difficulty,
+        sourceType: "upload",
+        externalUrl: null,
+        storageKey: uploadData.storageKey,
+        mimeType: uploadData.mimeType ?? "application/pdf",
+        fileNameOriginal: uploadData.fileNameOriginal ?? file.name,
+      });
+      setPending(false);
+      if (res && "error" in res && res.error) {
+        setError(formatActionError(res.error));
+        return;
+      }
+      if (res && "id" in res && res.id) {
+        router.push(`/library/${res.id}`);
+        return;
+      }
+      setError("Could not create piece");
+    } catch {
+      setPending(false);
+      setError("Could not create piece. Try signing out and back in.");
     }
-    if (res && "id" in res && res.id) {
-      router.push(`/library/${res.id}`);
-      return;
-    }
-    setError("Could not create piece");
   }
 
   return (

@@ -7,7 +7,8 @@ export async function middleware(req: NextRequest) {
     req,
     secret: process.env.AUTH_SECRET,
   });
-  const isLoggedIn = !!token;
+  // Must match auth.ts: stale cookies (missing valid flag or valid === false) are not logged in.
+  const isLoggedIn = token?.valid === true && !!token.sub;
 
   const isAppRoute =
     req.nextUrl.pathname.startsWith("/library") ||
