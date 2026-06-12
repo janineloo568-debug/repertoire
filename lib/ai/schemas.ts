@@ -28,6 +28,51 @@ export const practiceCoachResponseSchema = z.object({
 
 export type PracticeCoachResponseParsed = z.infer<typeof practiceCoachResponseSchema>;
 
+const DEFAULT_ENCOURAGEMENT = "Keep going — steady practice pays off.";
+
+/** Coerce common model mistakes (extra steps, missing nugget) before validation. */
+function normalizeCoachResponse(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const o = raw as Record<string, unknown>;
+
+  let steps: string[] = [];
+  if (Array.isArray(o.action_steps)) {
+    steps = o.action_steps
+      .filter((s): s is string => typeof s === "string")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  if (steps.length > 3) steps = steps.slice(0, 3);
+  while (steps.length < 2) {
+    steps.push(
+      steps.length === 0
+        ? "Play the passage slowly with a metronome, focusing on even timing."
+        : "Repeat at a comfortable tempo until it feels steady."
+    );
+  }
+
+  const nuggetSource = [o.encouragement_nugget, o.encouragement, o.encouragementNugget].find(
+    (v) => typeof v === "string" && v.trim()
+  );
+  const encouragement_nugget =
+    typeof nuggetSource === "string" ? nuggetSource.trim().slice(0, 160) : DEFAULT_ENCOURAGEMENT;
+
+  return {
+    coach_feedback: o.coach_feedback,
+    tomorrow_focus: o.tomorrow_focus,
+    action_steps: steps,
+    encouragement_nugget,
+  };
+}
+
+export function parsePracticeCoachResponse(raw: unknown): PracticeCoachResponseParsed {
+  const parsed = practiceCoachResponseSchema.safeParse(normalizeCoachResponse(raw));
+  if (!parsed.success) {
+    throw new Error(`Invalid model JSON: ${parsed.error.message}`);
+  }
+  return parsed.data;
+}
+
 export const parsedPracticeGoalsSchema = z.object({
   target_tempo_bpm: z.number().int().min(20).max(300).nullable(),
   passage_notes: z.string().max(500),

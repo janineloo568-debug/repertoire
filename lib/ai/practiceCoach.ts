@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { practiceCoachResponseSchema } from "@/lib/ai/schemas";
+import { parsePracticeCoachResponse } from "@/lib/ai/schemas";
 import type { ComparisonCoachContext } from "@/lib/queries/practice-context";
 
 const SYSTEM_PROMPT = `You are a supportive, concise studio teacher who understands busy adult schedules.
@@ -9,8 +9,8 @@ You receive measured audio features from two sessions — never claim to hear sp
 Respond with strict JSON only — no markdown — using exactly these keys:
 - coach_feedback: 2-3 warm sentences comparing progress from the earlier clip to the latest clip, anchored to their stated goals
 - tomorrow_focus: the single primary micro-goal for the next practice (one clear sentence)
-- action_steps: array of 2-3 specific exercises or tempo constraints (concrete, 15-30 min)
-- encouragement_nugget: one short motivational line
+- action_steps: array of exactly 2 or 3 specific exercises or tempo constraints (concrete, 15-30 min) — never more than 3
+- encouragement_nugget: required — one short motivational line (string)
 
 Rules:
 - Only cite tempo, steadiness, energy/dynamics, or consistency when supported by the metrics provided
@@ -90,10 +90,5 @@ export async function fetchComparisonPracticeCoach(context: ComparisonCoachConte
     throw new Error("Empty model response");
   }
 
-  const parsed = practiceCoachResponseSchema.safeParse(JSON.parse(content));
-  if (!parsed.success) {
-    throw new Error(`Invalid model JSON: ${parsed.error.message}`);
-  }
-
-  return parsed.data;
+  return parsePracticeCoachResponse(JSON.parse(content));
 }
