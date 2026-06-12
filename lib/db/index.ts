@@ -13,6 +13,11 @@ loadEnv();
 const MIGRATIONS_FOLDER = join(process.cwd(), "drizzle");
 const INITIAL_MIGRATION_TAG = "0000_naive_lizard";
 
+/** Next.js imports API routes in parallel during `next build` — skip DB migrations then. */
+function shouldRunMigrations(): boolean {
+  return process.env.NEXT_PHASE !== "phase-production-build";
+}
+
 const filePath = getSqliteFilePath();
 ensureDataDirectories(filePath, getUploadRoot());
 
@@ -84,6 +89,8 @@ function runLegacyColumnPatches() {
 }
 
 function runMigrations() {
+  if (!shouldRunMigrations()) return;
+
   sqlite.exec("BEGIN IMMEDIATE");
   try {
     dropPartialBootstrapTables();
@@ -93,9 +100,19 @@ function runMigrations() {
     throw err;
   }
 
-  if (!tableExists("users")) {
-    migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
-  } else {
+  const journalExists = tableExists("__drizzle_migrations");
+  const usersExists = tableExists("users");
+
+  if (!journalExists && !usersExists) {
+    try {
+      migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
+    } catch (err) {
+      const message = err instanceof Error ? err.message.toLowerCase() : "";
+      if (!message.includes("already exists") && !tableExists("users")) {
+        throw err;
+      }
+    }
+  } else if (usersExists) {
     baselineDrizzleJournalIfNeeded();
   }
 
