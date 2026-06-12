@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.gitignore
+data
+uploads
+.env*
+*.md
+.storybook
+storybook-static
+coverage
+.DS_Store
+*.tsbuildinfo
+terminals

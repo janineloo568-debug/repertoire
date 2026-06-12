@@ -2,8 +2,9 @@ import { randomUUID } from "crypto";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getUploadRoot } from "@/lib/paths/data-dir";
 
-const UPLOAD_ROOT = path.join(process.cwd(), "uploads");
+const UPLOAD_ROOT = getUploadRoot();
 
 function s3Client(): S3Client | null {
   const bucket = process.env.S3_BUCKET;

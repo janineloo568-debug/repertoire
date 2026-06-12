@@ -1,17 +1,13 @@
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
-import { mkdirSync } from "fs";
-import { dirname, join, resolve } from "path";
 import { loadEnv } from "@/lib/load-env";
+import { ensureDataDirectories, getSqliteFilePath, getUploadRoot } from "@/lib/paths/data-dir";
 import * as schema from "./schema";
 
 loadEnv();
 
-const filePath = process.env.SQLITE_PATH
-  ? resolve(process.cwd(), process.env.SQLITE_PATH)
-  : join(process.cwd(), "data", "sheetmate.db");
-
-mkdirSync(dirname(filePath), { recursive: true });
+const filePath = getSqliteFilePath();
+ensureDataDirectories(filePath, getUploadRoot());
 
 const sqlite = new Database(filePath);
 sqlite.pragma("journal_mode = WAL");
