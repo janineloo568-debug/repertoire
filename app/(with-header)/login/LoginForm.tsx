@@ -13,7 +13,7 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") ?? "/library";
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -23,13 +23,13 @@ export function LoginForm() {
     setError(null);
     setPending(true);
     const res = await signIn("credentials", {
-      email,
+      username: username.trim().toLowerCase(),
       password,
       redirect: false,
     });
     setPending(false);
     if (res?.error) {
-      setError("Invalid email or password.");
+      setError("Invalid username or password.");
       return;
     }
     router.push(callbackUrl);
@@ -41,20 +41,21 @@ export function LoginForm() {
       <Card>
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
-          <CardDescription>Use the email and password you registered with.</CardDescription>
+          <CardDescription>Use the username and password you registered with.</CardDescription>
         </CardHeader>
         <form onSubmit={onSubmit}>
           <CardContent className="space-y-4">
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="email"
-                type="email"
-                autoComplete="email"
+                id="username"
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase())}
               />
             </div>
             <div className="space-y-2">

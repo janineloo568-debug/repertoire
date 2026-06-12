@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 export default function RegisterPage() {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -24,19 +24,25 @@ export default function RegisterPage() {
     const res = await fetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name || undefined, email, password }),
+      body: JSON.stringify({
+        name: name || undefined,
+        username: username.trim().toLowerCase(),
+        password,
+      }),
     });
     const data = await res.json().catch(() => ({}));
-    setPending(false);
     if (!res.ok) {
+      setPending(false);
       setError(typeof data.error === "string" ? data.error : "Could not register.");
       return;
     }
+
     const sign = await signIn("credentials", {
-      email,
+      username: data.username ?? username.trim().toLowerCase(),
       password,
       redirect: false,
     });
+    setPending(false);
     if (sign?.error) {
       setError("Account created but sign-in failed. Try logging in.");
       return;
@@ -50,25 +56,29 @@ export default function RegisterPage() {
       <Card>
         <CardHeader>
           <CardTitle>Create account</CardTitle>
-          <CardDescription>Start building your Repertoire library.</CardDescription>
+          <CardDescription>Pick a username and password for your private library.</CardDescription>
         </CardHeader>
         <form onSubmit={onSubmit}>
           <CardContent className="space-y-4">
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="space-y-2">
-              <Label htmlFor="name">Name (optional)</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                required
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase())}
+              />
+              <p className="text-xs text-sheet-muted">
+                Lowercase letters, numbers, hyphens, and underscores. At least 3 characters.
+              </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+              <Label htmlFor="name">Display name (optional)</Label>
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>

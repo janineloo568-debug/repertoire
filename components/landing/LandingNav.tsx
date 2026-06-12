@@ -36,7 +36,9 @@ export function LandingNav() {
         <div className="flex shrink-0 items-center gap-3 sm:gap-6">
           {session?.user ? (
             <>
-              <span className="hidden max-w-[200px] truncate text-xs text-sheet-muted lg:inline">{session.user.email}</span>
+              <span className="hidden max-w-[200px] truncate text-xs text-sheet-muted lg:inline">
+                {session.user.username ? `@${session.user.username}` : session.user.name}
+              </span>
               <button
                 type="button"
                 onClick={() => signOut({ callbackUrl: "/" })}

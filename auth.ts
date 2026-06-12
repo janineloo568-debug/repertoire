@@ -4,6 +4,7 @@ import { compare } from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { normalizeUsername } from "@/lib/validations/username";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -14,25 +15,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Credentials({
       name: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        username: { label: "Username", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const email = credentials?.email as string | undefined;
+        const rawUsername = credentials?.username as string | undefined;
         const password = credentials?.password as string | undefined;
-        if (!email || !password) return null;
+        if (!rawUsername?.trim() || !password) return null;
 
-        const found = await db.select().from(users).where(eq(users.email, email)).limit(1);
+        const username = normalizeUsername(rawUsername);
+
+        const found = await db.select().from(users).where(eq(users.username, username)).limit(1);
         const user = found[0];
-        if (!user?.passwordHash) return null;
+        if (!user?.passwordHash || !user.username) return null;
 
         const ok = await compare(password, user.passwordHash);
         if (!ok) return null;
 
         return {
           id: user.id,
-          email: user.email,
-          name: user.name ?? undefined,
+          name: user.name ?? user.username,
+          username: user.username,
         };
       },
     }),
@@ -42,11 +45,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user?.id) {
         token.sub = user.id;
       }
+      if (user && "username" in user && typeof user.username === "string") {
+        token.username = user.username;
+      }
       return token;
     },
     session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub;
+      }
+      if (session.user && typeof token.username === "string") {
+        session.user.username = token.username;
       }
       return session;
     },
