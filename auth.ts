@@ -5,10 +5,13 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { normalizeUsername } from "@/lib/validations/username";
+import { assertAuthSecretConfigured, getAuthSecret } from "@/lib/auth/config";
+
+assertAuthSecretConfigured();
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
-  secret: process.env.AUTH_SECRET,
+  secret: getAuthSecret(),
   session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   pages: { signIn: "/login" },
   providers: [
@@ -41,31 +44,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    jwt({ token, user }) {
       if (user?.id) {
         token.sub = user.id;
         token.valid = true;
         if ("username" in user && typeof user.username === "string") {
           token.username = user.username;
         }
-        return token;
       }
-
-      if (!token.sub) return token;
-
-      const found = await db
-        .select({ id: users.id, username: users.username })
-        .from(users)
-        .where(eq(users.id, token.sub))
-        .limit(1);
-
-      if (!found[0]) {
-        token.valid = false;
-        return token;
-      }
-
-      token.valid = true;
-      if (found[0].username) token.username = found[0].username;
       return token;
     },
     session({ session, token }) {
