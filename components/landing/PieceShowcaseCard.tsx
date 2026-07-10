@@ -1,10 +1,10 @@
-import Image from "next/image";
+"use client";
+
+import { CoverArt } from "@/components/media/CoverArt";
 import { cn } from "@/lib/utils";
-import { landingAssets } from "./assets";
+import type { ShowcaseStatusTone } from "@/lib/landing/showcasePieces";
 
-type StatusTone = "mastered" | "learning" | "new";
-
-const statusStyles: Record<StatusTone, string> = {
+const statusStyles: Record<ShowcaseStatusTone, string> = {
   mastered: "text-[#be99ff]",
   learning: "text-[#d78f31]",
   new: "text-[#99ffb9]",
@@ -16,19 +16,15 @@ export function PieceShowcaseCard({
   statusLabel,
   statusTone,
   genreLabel,
-  texture = "a",
   className,
 }: {
   title: string;
   composer: string;
   statusLabel: string;
-  statusTone: StatusTone;
+  statusTone: ShowcaseStatusTone;
   genreLabel: string;
-  texture?: "a" | "b";
   className?: string;
 }) {
-  const src = texture === "b" ? landingAssets.cardTextureB : landingAssets.cardTextureA;
-
   return (
     <article
       className={cn(
@@ -36,15 +32,15 @@ export function PieceShowcaseCard({
         className
       )}
     >
-      <div className="relative z-[2] flex h-[121px] flex-col justify-between overflow-hidden p-6">
-        <Image
-          src={src}
-          alt=""
-          fill
-          className="z-0 object-cover opacity-50"
-          sizes="(max-width: 768px) 100vw, 360px"
+      <div className="relative h-[121px] shrink-0 overflow-hidden">
+        <CoverArt
+          title={title}
+          composer={composer}
+          containerClassName="absolute inset-0 border-0 bg-[#2a2a2a]"
+          imgClassName="h-full w-full object-cover brightness-75"
         />
-        <div className="relative z-10 flex items-start justify-between gap-2">
+        <div className="pointer-events-none absolute inset-0 z-[1] bg-black/35" aria-hidden />
+        <div className="relative z-10 flex items-start justify-between gap-2 p-6">
           <span className="border border-[#333] bg-[#111] px-2 py-1 text-xs font-medium leading-none text-white">
             <span className={statusStyles[statusTone]}>{statusLabel}</span>
           </span>

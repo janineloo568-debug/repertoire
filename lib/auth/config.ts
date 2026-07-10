@@ -12,10 +12,13 @@ export function useSecureSessionCookies(req?: {
     if (req.nextUrl?.protocol === "https:") return true;
     const forwarded = req.headers.get("x-forwarded-proto");
     if (forwarded?.split(",")[0]?.trim() === "https") return true;
+    // Plain HTTP (local preview) — Auth.js sets authjs.session-token, not __Secure-*.
+    if (req.nextUrl?.protocol === "http:") return false;
   }
   const url = process.env.AUTH_URL?.trim() || process.env.NEXTAUTH_URL?.trim() || "";
   if (url.startsWith("https://")) return true;
-  return process.env.NODE_ENV === "production";
+  if (url.startsWith("http://")) return false;
+  return false;
 }
 
 export function assertAuthSecretConfigured(): void {

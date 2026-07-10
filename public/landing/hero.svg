@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f5f0eb"/>
+      <stop offset="1" stop-color="#e8dfd4"/>
+    </linearGradient>
+    <pattern id="staff" width="120" height="48" patternUnits="userSpaceOnUse">
+      <path d="M0 12h120M0 24h120M0 36h120M0 48h120M0 60h120" stroke="#c4b5a5" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <rect width="1600" height="900" fill="url(#staff)" opacity="0.35"/>
+  <g opacity="0.12" fill="#7c3aed">
+    <ellipse cx="280" cy="180" rx="140" ry="90"/>
+    <ellipse cx="1200" cy="620" rx="220" ry="140"/>
+    <ellipse cx="900" cy="200" rx="100" ry="70"/>
+  </g>
+  <g opacity="0.08" stroke="#333" stroke-width="2" fill="none">
+    <path d="M200 650c80-120 200-80 280-200s160-40 240 20 180 60 280-40"/>
+    <path d="M100 400c60-80 140-40 200-120s120-20 180 40"/>
+  </g>
+  <!-- scattered notes -->
+  <g fill="#333" opacity="0.15">
+    <ellipse cx="450" cy="320" rx="8" ry="6"/>
+    <rect x="456" y="200" width="3" height="120" rx="1"/>
+    <ellipse cx="780" cy="480" rx="8" ry="6"/>
+    <rect x="786" y="360" width="3" height="120" rx="1"/>
+    <ellipse cx="1100" cy="350" rx="8" ry="6"/>
+    <rect x="1106" y="230" width="3" height="120" rx="1"/>
+  </g>
+</svg>

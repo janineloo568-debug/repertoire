@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { fetchArtworkUrlFromItunes } from "@/lib/artwork/itunes";
 import { cn } from "@/lib/utils";
 
 export type CoverArtProps = {
@@ -13,20 +14,20 @@ export type CoverArtProps = {
 };
 
 /**
- * Album / single artwork from iTunes Search via `/api/suggestions/artwork`.
+ * Album artwork via iTunes Search — resolved in the browser (same path library tiles use).
  */
 export function CoverArt({ title, composer, containerClassName, imgClassName }: CoverArtProps) {
   const [url, setUrl] = useState<string | null | undefined>(undefined);
+  const [broken, setBroken] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    const params = new URLSearchParams({ title });
-    if (composer?.trim()) params.set("composer", composer.trim());
+    setBroken(false);
+    setUrl(undefined);
 
-    fetch(`/api/suggestions/artwork?${params.toString()}`)
-      .then((r) => r.json() as Promise<{ url: string | null }>)
-      .then((d) => {
-        if (!cancelled) setUrl(d.url ?? null);
+    fetchArtworkUrlFromItunes(title, composer)
+      .then((resolved) => {
+        if (!cancelled) setUrl(resolved);
       })
       .catch(() => {
         if (!cancelled) setUrl(null);
@@ -54,7 +55,7 @@ export function CoverArt({ title, composer, containerClassName, imgClassName }: 
     );
   }
 
-  if (!url) {
+  if (!url || broken) {
     return (
       <div
         className={cn(
@@ -76,6 +77,7 @@ export function CoverArt({ title, composer, containerClassName, imgClassName }: 
         alt={alt}
         className={cn("h-full w-full object-cover", imgClassName)}
         loading="lazy"
+        onError={() => setBroken(true)}
       />
     </div>
   );

@@ -2,33 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { landingAssets } from "./assets";
 import { PieceShowcaseCard } from "./PieceShowcaseCard";
-
-const dailyMix = [
-  {
-    title: "Wagon Wheel",
-    composer: "Darius Rucker",
-    genreLabel: "Country Pop",
-    texture: "b" as const,
-  },
-  {
-    title: "Clair de Lune",
-    composer: "Claude Debussy",
-    genreLabel: "Impressionism",
-    texture: "a" as const,
-  },
-  {
-    title: "Up Theme",
-    composer: "Michael Giacchino",
-    genreLabel: "Contemporary",
-    texture: "a" as const,
-  },
-  {
-    title: "Summer of '69",
-    composer: "Bryan Adams",
-    genreLabel: "Country Pop",
-    texture: "b" as const,
-  },
-];
+import {
+  dailyMixShowcasePieces,
+  featureShowcasePieces,
+  showcasePieceKey,
+} from "@/lib/landing/showcasePieces";
 
 export function RepertoireLanding() {
   return (
@@ -103,20 +81,9 @@ export function RepertoireLanding() {
         </div>
 
         <div id="library" className="grid flex-1 gap-6 sm:grid-cols-2">
-          <PieceShowcaseCard
-            title={`Comptine d'un Autre été`}
-            composer="Yann Tiersen"
-            statusLabel="Mastered"
-            statusTone="mastered"
-            genreLabel="Contemporary Classical"
-          />
-          <PieceShowcaseCard
-            title="Interstellar (Main Theme)"
-            composer="Hans Zimmer"
-            statusLabel="Learning"
-            statusTone="learning"
-            genreLabel="Contemporary"
-          />
+          {featureShowcasePieces.map((piece) => (
+            <PieceShowcaseCard key={showcasePieceKey(piece)} {...piece} />
+          ))}
         </div>
       </section>
 
@@ -141,16 +108,9 @@ export function RepertoireLanding() {
               </Link>
             </div>
             <div className="-mx-2 flex gap-6 overflow-x-auto pb-4 scrollbar-thin">
-              {dailyMix.map((item) => (
-                <div key={item.title} className="min-w-[240px] flex-1 px-2">
-                  <PieceShowcaseCard
-                    title={item.title}
-                    composer={item.composer}
-                    statusLabel="New"
-                    statusTone="new"
-                    genreLabel={item.genreLabel}
-                    texture={item.texture}
-                  />
+              {dailyMixShowcasePieces.map((piece) => (
+                <div key={showcasePieceKey(piece)} className="min-w-[240px] flex-1 px-2">
+                  <PieceShowcaseCard {...piece} />
                 </div>
               ))}
             </div>

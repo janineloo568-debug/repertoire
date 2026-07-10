@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
+import path from "path";
+
+/** Home-dir lockfiles (e.g. ~/package-lock.json) must not become the Next.js workspace root. */
+const projectRoot = path.resolve(__dirname);
 
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: projectRoot,
+  turbopack: {
+    root: projectRoot,
+  },
   images: {
     remotePatterns: [
       {

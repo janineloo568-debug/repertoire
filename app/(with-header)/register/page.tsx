@@ -44,6 +44,12 @@ export default function RegisterPage() {
     });
     setPending(false);
     if (sign?.error) {
+      if (sign.error === "Configuration") {
+        setError(
+          "Account may have been created, but sign-in is misconfigured on the server (missing AUTH_SECRET on Railway)."
+        );
+        return;
+      }
       setError("Account created but sign-in failed. Try logging in.");
       return;
     }
